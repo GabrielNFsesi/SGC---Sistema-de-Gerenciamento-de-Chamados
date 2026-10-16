@@ -1,32 +1,29 @@
 <?php
+require 'layout.php';
 require 'conexao.php';
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $nome = trim($_POST['nome']);
-    $email = trim($_POST['email']);
-    $senha = $_POST['senha']; 
-    $perfil = 'Solicitante'; // Força o perfil base por questões de segurança
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') volta('registro.php');
+csrf_check();
 
-    // Verifica se o e-mail já existe para evitar duplicados
-    $sql_verifica = "SELECT id_usuario FROM usuario WHERE email = :email";
-    $stmt_verifica = $pdo->prepare($sql_verifica);
-    $stmt_verifica->execute([':email' => $email]);
+$nome = trim($_POST['nome'] ?? '');
+$email = trim($_POST['email'] ?? '');
+$senha = $_POST['senha'] ?? '';
 
-    if ($stmt_verifica->fetch()) {
-        echo "Este e-mail já está registado! <a href='registo.php'>Tentar outro</a> ou <a href='login.php'>Fazer login</a>";
-        exit;
-    }
-
-    // Insere o novo utilizador na base de dados
-    $sql = "INSERT INTO usuario (nome, email, senha, perfil) VALUES (:nome, :email, :senha, :perfil)";
-    $stmt = $pdo->prepare($sql);
-    
-    if ($stmt->execute([':nome' => $nome, ':email' => $email, ':senha' => $senha, ':perfil' => $perfil])) {
-        // Registo bem-sucedido, envia para o login
-        header("Location: login.php");
-        exit;
-    } else {
-        echo "Erro ao criar conta. <a href='registo.php'>Tentar novamente</a>";
-    }
+if ($nome === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($senha) < 8) {
+    flash('erro', 'Preencha o nome, um e-mail válido e uma senha com pelo menos 8 caracteres.');
+    volta('registro.php');
 }
-?>
+
+$v = $pdo->prepare('SELECT 1 FROM usuario WHERE email = ?');
+$v->execute([$email]);
+if ($v->fetch()) {
+    flash('erro', 'Este e-mail já está cadastrado. Entre na sua conta ou use outro e-mail.');
+    volta('registro.php');
+}
+
+// Perfil fixo: quem se cadastra sozinho sempre é Solicitante.
+$pdo->prepare('INSERT INTO usuario (nome, email, senha, perfil) VALUES (?,?,?,?)')
+    ->execute([$nome, $email, password_hash($senha, PASSWORD_DEFAULT), 'Solicitante']);
+
+flash('ok', 'Conta criada. Agora é só entrar.');
+volta('login.php');

@@ -1,32 +1,32 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <title>Novo Chamado</title>
-</head>
-<body>
-    <h2>Abrir Novo Chamado</h2>
+<?php
+require 'layout.php';
+exige_login(['Solicitante']);
+render_topo('Abrir chamado');
+?>
+<div class="card form-card">
+    <h1>Abrir chamado</h1>
     <form action="processa_chamado.php" method="POST">
-        <!-- Num cenário real, o id_usuario viria da sessão de login. 
-             Aqui usamos um input provisório para testar. -->
-        <label>E-mail do Solicitante:</label>
-        <input type="email" name="email_solicitante" required><br><br>
-
-        <label>Título:</label>
-        <input type="text" name="titulo" required maxlength="150"><br><br>
-
-        <label>Descrição:</label>
-        <textarea name="descricao" required maxlength="500"></textarea><br><br>
-
-        <label>Prioridade:</label>
-        <select name="prioridade">
-            <option value="Baixa">Baixa</option>
-            <option value="Média">Média</option>
-            <option value="Alta">Alta</option>
-            <option value="Crítica">Crítica</option>
-        </select><br><br>
-
-        <button type="submit">Cadastrar Chamado</button>
+        <?= csrf_field() ?>
+        <div class="field">
+            <label for="titulo">Título</label>
+            <input id="titulo" type="text" name="titulo" maxlength="150" required autofocus>
+            <p class="hint">Resuma o problema em uma frase.</p>
+        </div>
+        <div class="field">
+            <label for="descricao">Descrição</label>
+            <textarea id="descricao" name="descricao" maxlength="500" required></textarea>
+            <p class="hint">Até 500 caracteres. Conte o que aconteceu e o que você já tentou.</p>
+        </div>
+        <div class="field">
+            <label for="prioridade">Prioridade</label>
+            <select id="prioridade" name="prioridade">
+                <option>Baixa</option><option selected>Média</option><option>Alta</option><option>Crítica</option>
+            </select>
+        </div>
+        <div class="form-actions">
+            <button class="btn" type="submit">Abrir chamado</button>
+            <a class="btn btn-ghost" href="index.php">Cancelar</a>
+        </div>
     </form>
-</body>
-</html>
+</div>
+<?php render_rodape(); ?>

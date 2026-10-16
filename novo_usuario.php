@@ -1,59 +1,61 @@
 <?php
-session_start(); // Precisa ser a PRIMEIRA linha do arquivo!
+require 'layout.php';
 require 'conexao.php';
+exige_login(['Administrador']);
 
-// Verifica se existe a sessão e converte o perfil para minúsculo e sem espaços para comparar com segurança
-$perfil_logado = isset($_SESSION['perfil']) ? trim(strtolower($_SESSION['perfil'])) : '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_check();
+    $nome = trim($_POST['nome'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $senha = $_POST['senha'] ?? '';
+    $perfil = $_POST['perfil'] ?? '';
 
-// Proteção: Apenas Administradores acessam aqui
-if ($perfil_logado !== 'administrador') {
-    die("Acesso negado. Apenas administradores podem criar usuários.");
+    $erro = null;
+    if ($nome === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($senha) < 8
+        || !in_array($perfil, ['Solicitante', 'Atendente', 'Administrador'], true)) {
+        $erro = 'Preencha o nome, um e-mail válido, uma senha com pelo menos 8 caracteres e o perfil.';
+    } else {
+        $v = $pdo->prepare('SELECT 1 FROM usuario WHERE email = ?');
+        $v->execute([$email]);
+        if ($v->fetch()) $erro = 'Já existe um usuário com este e-mail.';
+    }
+    if ($erro) { flash('erro', $erro); volta('novo_usuario.php'); }
+
+    $pdo->prepare('INSERT INTO usuario (nome, email, senha, perfil) VALUES (?,?,?,?)')
+        ->execute([$nome, $email, password_hash($senha, PASSWORD_DEFAULT), $perfil]);
+    flash('ok', 'Usuário ' . $nome . ' cadastrado como ' . $perfil . '.');
+    volta('index.php');
 }
 
-// Lógica para salvar o novo usuário
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $nome = $_POST['nome'];
-    $email = $_POST['email'];
-    $senha = $_POST['senha']; 
-    $novo_perfil = $_POST['perfil'];
-
-    $sql = "INSERT INTO usuario (nome, email, senha, perfil) VALUES (:nome, :email, :senha, :perfil)";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([':nome' => $nome, ':email' => $email, ':senha' => $senha, ':perfil' => $novo_perfil]);
-    
-    echo "<h3>Usuário criado com sucesso!</h3>";
-    echo "<a href='index.php'><button>Voltar ao Painel</button></a>";
-    exit;
-}
+render_topo('Cadastrar usuário');
 ?>
-
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <title>SGC - Criar Usuário</title>
-</head>
-<body>
-    <h2>Criar Novo Usuário (Acesso Restrito ao Administrador)</h2>
+<div class="card form-card">
+    <h1>Cadastrar usuário</h1>
     <form method="POST">
-        <label>Nome Completo:</label><br>
-        <input type="text" name="nome" required><br><br>
-        
-        <label>E-mail:</label><br>
-        <input type="email" name="email" required><br><br>
-        
-        <label>Senha:</label><br>
-        <input type="password" name="senha" required><br><br>
-        
-        <label>Perfil do Usuário:</label><br>
-        <select name="perfil">
-            <option value="Solicitante">Solicitante</option>
-            <option value="Atendente">Atendente</option>
-            <option value="Administrador">Administrador</option>
-        </select><br><br>
-        
-        <button type="submit">Cadastrar Usuário</button>
-        <a href="index.php"><button type="button">Cancelar e Voltar</button></a>
+        <?= csrf_field() ?>
+        <div class="field">
+            <label for="nome">Nome completo</label>
+            <input id="nome" type="text" name="nome" required autofocus>
+        </div>
+        <div class="field">
+            <label for="email">E-mail</label>
+            <input id="email" type="email" name="email" required>
+        </div>
+        <div class="field">
+            <label for="senha">Senha inicial</label>
+            <input id="senha" type="password" name="senha" autocomplete="new-password" minlength="8" required>
+            <p class="hint">Use pelo menos 8 caracteres.</p>
+        </div>
+        <div class="field">
+            <label for="perfil">Perfil</label>
+            <select id="perfil" name="perfil">
+                <option>Solicitante</option><option>Atendente</option><option>Administrador</option>
+            </select>
+        </div>
+        <div class="form-actions">
+            <button class="btn" type="submit">Cadastrar usuário</button>
+            <a class="btn btn-ghost" href="index.php">Cancelar</a>
+        </div>
     </form>
-</body>
-</html>
+</div>
+<?php render_rodape(); ?>

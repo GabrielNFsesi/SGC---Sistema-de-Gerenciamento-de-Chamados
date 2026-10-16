@@ -1,24 +1,26 @@
-<!DOCTYPE html>
-<html lang="pt-PT">
-<head>
-    <meta charset="UTF-8">
-    <title>SGC - Criar Conta</title>
-</head>
-<body>
-    <h2>Criar Nova Conta</h2>
-    <form action="processa_registro.php" method="POST">
-        <label>Nome Completo:</label>
-        <input type="text" name="nome" required><br><br>
-        
-        <label>E-mail:</label>
-        <input type="email" name="email" required><br><br>
-        
-        <label>Senha:</label>
-        <input type="password" name="senha" required><br><br>
-        
-        <button type="submit">Registrar</button>
-    </form>
-    <br>
-    <a href="login.php">Já tem uma conta? Iniciar sessão</a>
-</body>
-</html>
+<?php
+require 'layout.php';
+if (!empty($_SESSION['id_usuario'])) volta('index.php');
+render_topo('Criar conta', 'auth');
+?>
+<h1>Criar conta</h1>
+<p class="lead">Cadastre-se para abrir e acompanhar chamados.</p>
+<form action="processa_registro.php" method="POST">
+    <?= csrf_field() ?>
+    <div class="field">
+        <label for="nome">Nome completo</label>
+        <input id="nome" type="text" name="nome" autocomplete="name" required autofocus>
+    </div>
+    <div class="field">
+        <label for="email">E-mail</label>
+        <input id="email" type="email" name="email" autocomplete="username" required>
+    </div>
+    <div class="field">
+        <label for="senha">Senha</label>
+        <input id="senha" type="password" name="senha" autocomplete="new-password" minlength="8" required>
+        <p class="hint">Use pelo menos 8 caracteres.</p>
+    </div>
+    <button class="btn" type="submit">Criar conta</button>
+</form>
+<p class="auth-alt">Já tem uma conta? <a href="login.php">Entrar</a></p>
+<?php render_rodape(); ?>

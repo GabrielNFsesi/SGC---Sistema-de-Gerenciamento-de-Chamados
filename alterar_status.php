@@ -1,38 +1,45 @@
 <?php
+require 'layout.php';
 require 'conexao.php';
+exige_login(['Atendente', 'Administrador']);
 
-$id_chamado = $_GET['id'] ?? null;
+$lista = ['Aberto', 'Em atendimento', 'Resolvido'];
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $id_chamado_post = $_POST['id_chamado'];
-    $novo_status = $_POST['status'];
-    
-    // Atualiza o status no banco de dados
-    $sql = "UPDATE chamado SET status = :status WHERE id_chamado = :id_chamado";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([':status' => $novo_status, ':id_chamado' => $id_chamado_post]);
-    
-    // Obs: Pela regra RN11, você deveria depois inserir essa alteração na tabela `historico` 
-    // com o "status_anterior", "status_novo" e "acao".
-    
-    header("Location: index.php");
-    exit;
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_check();
+    $id = (int)($_POST['id_chamado'] ?? 0);
+    $novo = $_POST['status'] ?? '';
+    if (!in_array($novo, $lista, true) || !muda_status($pdo, $id, $novo, 'Status alterado')) {
+        flash('erro', 'Não foi possível alterar o status.');
+        volta('index.php');
+    }
+    flash('ok', 'Status atualizado para ' . $novo . '.');
+    volta('index.php');
 }
-?>
 
-<!DOCTYPE html>
-<html>
-<body>
-    <h2>Alterar Status do Chamado</h2>
-    <form action="alterar_status.php" method="POST">
-        <input type="hidden" name="id_chamado" value="<?= htmlspecialchars($id_chamado) ?>">
-        <label>Novo Status:</label>
-        <select name="status">
-            <option value="Aberto">Aberto</option>
-            <option value="Em atendimento">Em atendimento</option>
-            <option value="Resolvido">Resolvido</option>
-        </select><br><br>
-        <button type="submit">Salvar</button>
+$c = carrega_chamado($pdo, $_GET['id'] ?? 0);
+if (!$c) { flash('erro', 'Chamado não encontrado.'); volta('index.php'); }
+
+render_topo('Alterar status');
+?>
+<div class="card form-card">
+    <h1>Alterar status</h1>
+    <?= resumo_chamado($c) ?>
+    <form method="POST">
+        <?= csrf_field() ?>
+        <input type="hidden" name="id_chamado" value="<?= (int)$c['id_chamado'] ?>">
+        <div class="field">
+            <label for="status">Novo status</label>
+            <select id="status" name="status">
+                <?php foreach ($lista as $s): ?>
+                    <option <?= $s === $c['status'] ? 'selected' : '' ?>><?= e($s) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="form-actions">
+            <button class="btn" type="submit">Salvar status</button>
+            <a class="btn btn-ghost" href="index.php">Cancelar</a>
+        </div>
     </form>
-</body>
-</html>
+</div>
+<?php render_rodape(); ?>

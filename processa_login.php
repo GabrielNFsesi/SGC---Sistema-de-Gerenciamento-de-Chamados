@@ -1,28 +1,36 @@
 <?php
-session_start(); // Inicia a sessão no PHP
+require 'layout.php';
 require 'conexao.php';
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = $_POST['email'];
-    $senha = $_POST['senha'];
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') volta('login.php');
+csrf_check();
 
-    // Busca o usuário no banco
-    $sql = "SELECT id_usuario, nome, perfil FROM usuario WHERE email = :email AND senha = :senha";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([':email' => $email, ':senha' => $senha]);
-    $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
+$email = trim($_POST['email'] ?? '');
+$senha = $_POST['senha'] ?? '';
 
-    if ($usuario) {
-        // Se achou, guarda os dados na sessão
-        $_SESSION['id_usuario'] = $usuario['id_usuario'];
-        $_SESSION['nome'] = $usuario['nome'];
-        $_SESSION['perfil'] = $usuario['perfil'];
+$s = $pdo->prepare('SELECT id_usuario, nome, perfil, senha FROM usuario WHERE email = ?');
+$s->execute([$email]);
+$u = $s->fetch();
 
-        // Redireciona para o painel principal
-        header("Location: index.php");
-        exit;
-    } else {
-        echo "E-mail ou senha incorretos! <a href='login.php'>Tentar novamente</a>";
+$ok = false;
+if ($u) {
+    if (password_verify($senha, $u['senha'])) {
+        $ok = true;
+    } elseif (hash_equals($u['senha'], $senha)) {
+        // Conta antiga com senha em texto puro: converte para hash no primeiro login.
+        $ok = true;
+        $pdo->prepare('UPDATE usuario SET senha = ? WHERE id_usuario = ?')
+            ->execute([password_hash($senha, PASSWORD_DEFAULT), $u['id_usuario']]);
     }
 }
-?>
+
+if (!$ok) {
+    flash('erro', 'E-mail ou senha incorretos. Confira os dados e tente de novo.');
+    volta('login.php');
+}
+
+session_regenerate_id(true); // evita fixação de sessão
+$_SESSION['id_usuario'] = $u['id_usuario'];
+$_SESSION['nome'] = $u['nome'];
+$_SESSION['perfil'] = $u['perfil'];
+volta('index.php');
